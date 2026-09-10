@@ -82,29 +82,3 @@ def desglose(envio: Envio) -> dict[str, float]:
         "total": calcular(envio),
     }
 
-
-def calcular_descuento_por_volumen(envios: list[Envio]) -> float:
-    """Calcula un descuento porcentual segun el volumen total de una remesa."""
-    cantidad = len(envios)
-    if cantidad == 0:
-        return 0.0
-
-    peso_total = sum(e.peso_kg for e in envios)
-    valor_total = sum(e.valor_declarado for e in envios)
-
-    if peso_total >= 500 and valor_total >= 5000:
-        descuento = 0.15
-    elif peso_total >= 300 or valor_total >= 3000:
-        descuento = 0.10
-    elif cantidad >= 20:
-        descuento = 0.05
-    else:
-        descuento = 0.0
-
-    if any(e.urgente for e in envios):
-        descuento = descuento * 0.5
-
-    if valor_total > 0 and (peso_total / valor_total) > 0.5:
-        descuento = max(descuento - 0.02, 0.0)
-
-    return round(descuento, 4)
