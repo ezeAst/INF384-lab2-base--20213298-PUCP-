@@ -49,6 +49,61 @@ Al corregirlos, solo se publica lo que de verdad fue validado, lo que reduce la 
 
 1.5--------------------------------
 
-Proxy (no es DORA, es lo que medimos nosotros para sustentarlo): % de ejecuciones del job publicar que corren sin que validar haya terminado en verde.
-Antes de la intervención: 100% (no existe needs, no hay ninguna garantía).
-Después: debe ser 0% (GitHub Actions bloquea publicar automáticamente si validar falla).
+Proxy (no es DORA, es lo que medimos nosotros para sustentarlo): duración total del workflow (push → publicar terminado), medida en segundos desde que se dispara la ejecución hasta que ambos jobs terminan.
+
+Antes (línea base, jobs en paralelo): 57s, 1m 0s, 52s → promedio ≈ 56s
+Ahora (con needs: validar, ejecución secuencial): necesito que corras el workflow 3 veces desde Actions → "Run workflow" (igual que hiciste para la línea base) y me pases duración + URL de cada u
+
+
+## 4.1 Medición posterior
+
+**Proxy:** duración total del workflow (desde que se dispara la ejecución hasta que el job `publicar` termina), como indicador de Lead Time for Changes.
+
+**Línea base (antes de la intervención, jobs en paralelo):**
+
+| Ejecución | Duración |
+|---|---|
+| 1 | 57s |
+| 2 | 1m 0s |
+| 3 | 52s |
+
+Promedio línea base: **56.3s**
+
+**Medición posterior (después de aplicar `needs: validar`):**
+
+| Ejecución | Pipeline | Duración |
+|---|---|---|
+| 1 | #13 (commit 6869c75) | 1m 33s |
+| 2 | #16 (commit 2ab41a1) | 1m 29s |
+| 3 | #19 (commit 129f2ca) | 1m 22s |
+
+Promedio posterior: **88s**
+
+**Qué cambió y en qué proporción:** la duración total del workflow aumentó de 56.3s a 88s, un incremento de aproximadamente **56%**. Este aumento es la evidencia esperada, no un empeoramiento: antes de corregir el Defecto 1, `validar` y `publicar` corrían en paralelo, por lo que el tiempo registrado (~56s) correspondía solo a la duración del job más largo y no reflejaba el flujo real. Con `needs: validar` agregado, `publicar` ahora espera a que `validar` termine, por lo que el tiempo total pasa a ser la suma real de ambas etapas. El incremento confirma que el gating entre etapas quedó implementado correctamente.
+
+## 4.2 Justificación de la versión
+
+**Versión declarada:** 1.3.0 (antes: 1.2.0).
+
+Desde el commit que marcó la versión 1.2.0 (`b7e44ce`, `feat(validaciones): validaciones de formato de codigo, sku, cantidad y peso`), el historial incluye:
+
+- `b481aa6` — `fix(tarifas): redondear el costo por peso a dos decimales`
+- `6ba3804` — `fix(validaciones): colapsar espacios repetidos en el nombre del cliente`
+- `562e631` — `feat(tarifas): agregar desglose de la tarifa calculada`
+- `99eb48e` — `ci: pipeline de validacion y publicacion de artefacto`
+- `4aa2269`, `cc07c86`, `017bdcf` — `fix:` ajustes de configuración de Sonar en el pipeline
+- `a220ab2` — `fix: borrando archivo .DS_Store`
+- `8ad9715`, `6c38507` — `docs:` actualización de documentación
+
+El commit `562e631` agrega la función `desglose()` sin modificar la firma ni el comportamiento de ninguna función existente (`calcular`, `costo_peso`, `factor_zona`) — es un cambio aditivo y compatible hacia atrás. El resto de commits son correcciones (`fix`), configuración de CI (`ci`) o documentación (`docs`), sin impacto en la API pública del módulo.
+
+Al existir funcionalidad nueva compatible hacia atrás y ningún breaking change, corresponde un incremento de versión **menor**: 1.2.0 → **1.3.0**.
+
+## 4.3 Lo que no se resolvió
+
+El pipeline corregido garantiza que solo se publica un artefacto validado, pero **no reduce el MTTR ni interviene en el despliegue real a producción**: el resultado final sigue siendo un artefacto de GitHub Actions (`despachos-<version>`), no un paquete instalado o desplegado en ningún ambiente. La entrega a producción sigue dependiendo de un paso manual fuera de este workflow (equivalente a la ventana de despliegue manual de los viernes 22:00 del caso Retail Andina).
+
+Para resolverlo haría falta agregar un job adicional de despliegue automático (por ejemplo, publicar a un registro real como PyPI o un servidor interno, y/o un paso de deploy a un ambiente), con su propia validación post-despliegue (smoke tests) y, idealmente, un mecanismo de rollback automático si esa validación falla. Sin eso, aunque el Lead Time y el Change Failure Rate del pipeline mejoren, el tiempo real hasta que un cambio esté disponible para el usuario final (y el tiempo de recuperación ante un incidente) siguen fuera del alcance de esta intervención.
+
+
+4.4 use ia para consultas de conceptos
