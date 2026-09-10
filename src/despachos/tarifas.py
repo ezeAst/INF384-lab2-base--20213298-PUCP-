@@ -83,7 +83,7 @@ def desglose(envio: Envio) -> dict[str, float]:
     }
 
 def calcular_descuento_por_volumen(envios: list[Envio]) -> float:
-    """Calcula un descuento porcentual segun el volumen total de una remesa."""
+    """Calcula un descuento porcentual segun el volumen tootal de una remesa."""
     cantidad = len(envios)
     if cantidad == 0:
         return 0.0
