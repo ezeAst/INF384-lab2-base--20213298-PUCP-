@@ -1,0 +1,28 @@
+1) publicar no depende de validar
+Archivo/lineas: job publicar, linea ~41-43 (falta la clave needs)
+Que esta mal: los jobs corren en paralelo por defecto; no hay needs: validar
+Consecuencia: se pierde la garantia de que solo se construye/publica codigo que
+paso pruebas y analisis. Si validar falla, publicar puede terminar antes y
+subir el artefacto igual.
+ 
+2) El coverage generado nunca llega a Sonar
+Archivo/lineas: paso Ejecutar pruebas  genera coverage.xml, pero el
+paso Analisis de calidad no lo referencia en args. 
+Consecuencia: se pierde la garantia de que el Quality Gate mide cobertura real;
+Sonar ve 0% de cobertura, asi que cualquier condicion de cobertura en el gate
+queda invalida.
+ 
+3) El analisis de Sonar no bloquea nada si el Quality Gate falla
+Archivo/lineas: paso Analisis de calidad, lineas 31
+Que esta mal: por defecto sonarqube-scan-action solo sube el analisis, no
+espera el resultado del Quality Gate.
+Consecuencia: el job "Validar" no valida nada: puede quedar en verde aunque el
+Quality Gate este en rojo, y por el defecto 1 eso tampoco bloquea "publicar".
+ 
+4) "Publicar el paquete" no publica el paquete
+Archivo/lineas: paso "Publicar el paquete", lineas 61-66
+Que esta mal: actions/upload-artifact solo guarda dist/ como artefacto interno
+de la ejecucion de Actions (temporal), no lo publica en ningun registro (PyPI,
+GitHub Packages, un Release)
+Consecuencia: se pierde la garantia implicita en el nombre del paso/job: nadie
+fuera de esa ejecucion de CI puede instalar o consumir el paquete "publicado".
